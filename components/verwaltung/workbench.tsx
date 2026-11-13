@@ -25,7 +25,8 @@ import {
   type ActionResult,
 } from "@/app/actions/verwaltung";
 import type { ApplicationStatus } from "@/db/schema";
-import { formatEuro } from "@/lib/format";
+import { ButtonLink } from "@/components/ui/button-link";
+import { formatDateTime, formatEuro } from "@/lib/format";
 
 type Preset = { title: string; validUntil: string | null; details: Record<string, string> } | null;
 
@@ -118,6 +119,8 @@ export function Workbench({
   status,
   feeCents,
   feePaid,
+  invoiceHref,
+  payment,
   preset,
   issuedCount,
   draft,
@@ -126,6 +129,8 @@ export function Workbench({
   status: ApplicationStatus;
   feeCents: number;
   feePaid: boolean;
+  invoiceHref: string;
+  payment: { last4: string; transactionId: string; paidAt: string } | null;
   preset: Preset;
   issuedCount: number;
   draft: DocRender | null;
@@ -200,14 +205,34 @@ export function Workbench({
             <Card.Title className="text-base">Gebühr {formatEuro(feeCents)}</Card.Title>
             <span className={`text-sm ${feePaid ? "text-success" : "text-warning"}`}>{feePaid ? "bezahlt" : "offen"}</span>
           </Card.Header>
-          {!feePaid ? (
-            <Card.Footer>
-              <Button fullWidth isPending={pending} size="sm" variant="tertiary" onPress={() => run(() => markFeePaid(applicationId))}>
+          <Card.Content className="text-sm">
+            {payment ? (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                <dt className="text-muted">Zahlart</dt>
+                <dd className="m-0">NordPay ···· {payment.last4}</dd>
+                <dt className="text-muted">Transaktion</dt>
+                <dd className="m-0 font-mono text-xs leading-5">{payment.transactionId}</dd>
+                <dt className="text-muted">Eingang</dt>
+                <dd className="m-0">{formatDateTime(payment.paidAt)}</dd>
+              </dl>
+            ) : feePaid ? (
+              <p className="text-muted">Bar an der Kasse verbucht.</p>
+            ) : (
+              <p className="text-muted">Der Bürger kann online mit NordPay zahlen. Bei Barzahlung hier verbuchen.</p>
+            )}
+          </Card.Content>
+          <Card.Footer className="flex-col gap-2">
+            {!feePaid ? (
+              <Button fullWidth isPending={pending} size="sm" variant="secondary" onPress={() => run(() => markFeePaid(applicationId))}>
                 <Receipt />
-                Als bezahlt markieren
+                Barzahlung verbuchen
               </Button>
-            </Card.Footer>
-          ) : null}
+            ) : null}
+            <ButtonLink fullWidth href={invoiceHref} size="sm" variant="tertiary">
+              <FileText />
+              Rechnung ansehen
+            </ButtonLink>
+          </Card.Footer>
         </Card>
       ) : null}
 

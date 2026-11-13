@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ChecksPanel, NextStepBanner } from "@/components/verwaltung/checks-panel";
 import { Workbench } from "@/components/verwaltung/workbench";
 import { db } from "@/db";
-import { applicationEvents, applications, citizens, departments, documents, jobs, services, users } from "@/db/schema";
+import { applicationEvents, applications, citizens, departments, documents, jobs, payments, services, users } from "@/db/schema";
 import { referenceFromSlug, referenceSlug } from "@/lib/applications";
 import { nextStep, runChecks } from "@/lib/application-checks";
 import { getDocumentsForApplication, getDraftDocument } from "@/lib/document-render";
@@ -36,7 +36,7 @@ export default async function AdminApplicationPage({ params }: { params: Promise
   const { app, service, department, citizen, job } = row;
 
   const preset = documentPreset(service, app.data, citizen);
-  const [events, docs, checks, draft, otherApps, citizenDocs] = await Promise.all([
+  const [events, docs, checks, draft, otherApps, citizenDocs, [payment]] = await Promise.all([
     db
       .select({ event: applicationEvents, authorName: users.displayName, authorUser: users.username })
       .from(applicationEvents)
@@ -54,6 +54,12 @@ export default async function AdminApplicationPage({ params }: { params: Promise
       .orderBy(desc(applications.submittedAt))
       .limit(6),
     db.select().from(documents).where(eq(documents.citizenId, citizen.id)).orderBy(desc(documents.issuedAt)).limit(8),
+    db
+      .select({ last4: payments.cardLast4, transactionId: payments.transactionId, paidAt: payments.paidAt })
+      .from(payments)
+      .where(and(eq(payments.applicationId, app.id), eq(payments.status, "bezahlt")))
+      .orderBy(desc(payments.paidAt))
+      .limit(1),
   ]);
   const publicEvents = events.filter((e) => !e.event.isInternal);
   const step = nextStep(app, service, docs.length, publicEvents.at(-1)?.event.type ?? null);
@@ -146,6 +152,8 @@ export default async function AdminApplicationPage({ params }: { params: Promise
             draft={draft}
             feeCents={app.feeCents}
             feePaid={!!app.feePaidAt}
+            invoiceHref={`/verwaltung/antraege/${az}/rechnung`}
+            payment={payment ? { last4: payment.last4, transactionId: payment.transactionId, paidAt: (payment.paidAt ?? new Date()).toISOString() } : null}
             issuedCount={docs.length}
             preset={preset}
             status={app.status}

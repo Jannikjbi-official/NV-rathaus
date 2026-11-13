@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
-import { Calendar, FileText } from "@gravity-ui/icons";
+import { Calendar, CreditCard, FileText, Receipt } from "@gravity-ui/icons";
 import { Alert, Card, Chip, Separator } from "@heroui/react";
 
 import { ApplicationData, StatusChip, StatusSteps, Timeline } from "@/components/applications/parts";
@@ -11,7 +11,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { db } from "@/db";
 import { applicationEvents, applications, departments, documents, services, users } from "@/db/schema";
 import { referenceFromSlug } from "@/lib/applications";
-import { formatDateTime, formatEuro } from "@/lib/format";
+import { formatDateTime, formatEuro, formatLongDate } from "@/lib/format";
+import { invoiceNumber } from "@/lib/nordpay";
 import { OPEN_STATUSES, STATUS } from "@/lib/status";
 import { requireResident } from "@/lib/viewer";
 
@@ -42,6 +43,8 @@ export default async function ApplicationPage({ params, searchParams }: { params
   ]);
   const open = OPEN_STATUSES.includes(app.status);
   const lastQuestion = [...events].reverse().find((e) => e.event.type === "status" && e.event.toStatus === "rueckfrage");
+  const hasFee = app.feeCents > 0;
+  const feeOpen = hasFee && !app.feePaidAt && ["eingereicht", "in_bearbeitung", "rueckfrage", "genehmigt"].includes(app.status);
 
   return (
     <>
@@ -70,6 +73,29 @@ export default async function ApplicationPage({ params, searchParams }: { params
                 <Alert.Description>{lastQuestion?.event.message ?? "Bitte beantworten Sie die Rückfrage unten."}</Alert.Description>
               </Alert.Content>
             </Alert>
+          ) : null}
+
+          {feeOpen ? (
+            <Card className="border border-warning/40">
+              <Card.Content className="flex-row flex-wrap items-center gap-4">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning-soft-foreground">
+                  <Receipt className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">Gebühr offen: {formatEuro(app.feeCents)}</p>
+                  <p className="text-sm text-muted">
+                    Rechnung {invoiceNumber(app.reference)}. {app.status === "genehmigt" ? "Bitte bezahlen Sie, damit Ihr Dokument ausgehändigt werden kann." : "Sie können schon jetzt online bezahlen."}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <ButtonLink href={`/konto/antraege/${az}/rechnung`} size="sm" variant="tertiary">Rechnung</ButtonLink>
+                  <ButtonLink href={`/zahlung/${az}`} size="sm">
+                    <CreditCard />
+                    Jetzt bezahlen
+                  </ButtonLink>
+                </div>
+              </Card.Content>
+            </Card>
           ) : null}
 
           {docs.length > 0 ? (
@@ -134,15 +160,30 @@ export default async function ApplicationPage({ params, searchParams }: { params
                 <p className="text-xs text-muted">Gebühr</p>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{formatEuro(app.feeCents)}</span>
-                  {app.feeCents > 0 ? (
+                  {hasFee ? (
                     <Chip color={app.feePaidAt ? "success" : "warning"} size="sm" variant="soft">{app.feePaidAt ? "bezahlt" : "offen"}</Chip>
                   ) : null}
                 </div>
+                {app.feePaidAt ? <p className="text-xs text-muted">am {formatLongDate(app.feePaidAt)}</p> : null}
               </div>
             </Card.Content>
-            {service.needsAppointment && app.status === "genehmigt" ? (
-              <Card.Footer>
-                <ButtonLink fullWidth href="/konto/termine" size="sm"><Calendar />Abholtermin buchen</ButtonLink>
+            {hasFee || (service.needsAppointment && app.status === "genehmigt") ? (
+              <Card.Footer className="flex-col gap-2">
+                {service.needsAppointment && app.status === "genehmigt" ? (
+                  <ButtonLink fullWidth href="/konto/termine" size="sm" variant={feeOpen ? "secondary" : "primary"}><Calendar />Abholtermin buchen</ButtonLink>
+                ) : null}
+                {feeOpen ? (
+                  <ButtonLink fullWidth href={`/zahlung/${az}`} size="sm">
+                    <CreditCard />
+                    Mit NordPay bezahlen
+                  </ButtonLink>
+                ) : null}
+                {hasFee ? (
+                  <ButtonLink fullWidth href={`/konto/antraege/${az}/rechnung`} size="sm" variant="tertiary">
+                    <Receipt />
+                    Rechnung {invoiceNumber(app.reference)}
+                  </ButtonLink>
+                ) : null}
               </Card.Footer>
             ) : null}
           </Card>

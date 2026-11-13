@@ -8,7 +8,7 @@ import { documentSides, previewSide } from "./registry";
 import type { DocRender, DocSide } from "./types";
 
 /** Skaliert eine Seite in Designgröße auf die verfügbare Breite. */
-function Scaled({ side, maxWidth, innerRef, invalid }: { side: DocSide; maxWidth?: number; innerRef?: (el: HTMLDivElement | null) => void; invalid?: string }) {
+export function Scaled({ side, maxWidth, innerRef, invalid }: { side: DocSide; maxWidth?: number; innerRef?: (el: HTMLDivElement | null) => void; invalid?: string }) {
   const outer = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.4);
 
@@ -48,7 +48,7 @@ function Scaled({ side, maxWidth, innerRef, invalid }: { side: DocSide; maxWidth
   );
 }
 
-const fileBase = (doc: DocRender) => `${doc.number}_${doc.title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}`;
+const safeName = (text: string) => text.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
 
 async function renderImage(node: HTMLElement, side: DocSide, format: "png" | "jpeg") {
   const { toJpeg, toPng } = await import("html-to-image");
@@ -77,12 +77,25 @@ function download(href: string, name: string) {
   a.remove();
 }
 
-export function DocumentViewer({ doc }: { doc: DocRender }) {
-  const sides = documentSides(doc);
+/** Zeigt Seiten in Designgröße an und exportiert sie als PDF (in Originalgröße) oder PNG. */
+export function PagesViewer({
+  sides,
+  fileName,
+  pdfTitle,
+  invalid,
+  gridClassName = "",
+  toolbar,
+}: {
+  sides: DocSide[];
+  fileName: string;
+  pdfTitle: string;
+  invalid?: string;
+  gridClassName?: string;
+  toolbar?: React.ReactNode;
+}) {
   const nodes = useRef<Record<string, HTMLDivElement | null>>({});
   const [busy, setBusy] = useState(false);
-  const invalid = doc.state.tone === "success" ? undefined : doc.state.label;
-  const isCard = sides.length === 2 && sides[0].width === sides[1].width;
+  const base = safeName(fileName);
 
   const exportPng = async (side: DocSide) => {
     const node = nodes.current[side.id];
@@ -90,7 +103,7 @@ export function DocumentViewer({ doc }: { doc: DocRender }) {
     if (!node) return;
     setBusy(true);
     try {
-      download(await renderImage(node, side, "png"), `${fileBase(doc)}_${side.id}.png`);
+      download(await renderImage(node, side, "png"), sides.length > 1 ? `${base}_${side.id}.png` : `${base}.png`);
     } catch {
       toast.danger("Das Bild konnte nicht erzeugt werden.");
     } finally {
@@ -116,8 +129,8 @@ export function DocumentViewer({ doc }: { doc: DocRender }) {
         else pdf.addPage([w, h], orientation);
         pdf.addImage(jpg, "JPEG", 0, 0, w, h);
       }
-      pdf?.setProperties({ title: `${doc.title} ${doc.number}`, subject: "Stadt Nordverkehr", creator: "Rathaus Nordverkehr" });
-      pdf?.save(`${fileBase(doc)}.pdf`);
+      pdf?.setProperties({ title: pdfTitle, subject: "Stadt Nordverkehr", creator: "Rathaus Nordverkehr" });
+      pdf?.save(`${base}.pdf`);
     } catch {
       toast.danger("Das PDF konnte nicht erzeugt werden.");
     } finally {
@@ -128,6 +141,7 @@ export function DocumentViewer({ doc }: { doc: DocRender }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {toolbar}
         <Button isPending={busy} onPress={exportPdf}>
           {busy ? <Spinner color="current" size="sm" /> : <FileArrowDown />}
           PDF herunterladen
@@ -150,7 +164,7 @@ export function DocumentViewer({ doc }: { doc: DocRender }) {
         </Dropdown>
       </div>
 
-      <div className={`grid items-start gap-8 ${isCard ? "lg:grid-cols-2" : doc.type === "reisepass" ? "lg:grid-cols-[0.62fr_1fr]" : ""}`}>
+      <div className={`grid items-start gap-8 ${gridClassName}`}>
         {sides.map((side) => (
           <figure key={side.id} className="m-0 flex flex-col items-center gap-3">
             <Scaled
@@ -166,6 +180,21 @@ export function DocumentViewer({ doc }: { doc: DocRender }) {
         ))}
       </div>
     </div>
+  );
+}
+
+export function DocumentViewer({ doc }: { doc: DocRender }) {
+  const sides = documentSides(doc);
+  const isCard = sides.length === 2 && sides[0].width === sides[1].width;
+
+  return (
+    <PagesViewer
+      fileName={`${doc.number}_${doc.title}`}
+      gridClassName={isCard ? "lg:grid-cols-2" : doc.type === "reisepass" ? "lg:grid-cols-[0.62fr_1fr]" : ""}
+      invalid={doc.state.tone === "success" ? undefined : doc.state.label}
+      pdfTitle={`${doc.title} ${doc.number}`}
+      sides={sides}
+    />
   );
 }
 

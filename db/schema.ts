@@ -63,6 +63,13 @@ export const postKind = pgEnum("post_kind", [
 
 export const trafficSeverity = pgEnum("traffic_severity", ["hoch", "mittel", "info"]);
 
+export const paymentStatus = pgEnum("payment_status", [
+  "authentifizierung",
+  "bezahlt",
+  "abgelehnt",
+  "abgebrochen",
+]);
+
 export const appointmentStatus = pgEnum("appointment_status", [
   "gebucht",
   "storniert",
@@ -352,6 +359,34 @@ export const appointments = pgTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* Zahlungen (fiktiver Zahlungsdienst NordPay)                                */
+/* -------------------------------------------------------------------------- */
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    citizenId: uuid("citizen_id")
+      .notNull()
+      .references(() => citizens.id),
+    amountCents: integer("amount_cents").notNull(),
+    status: paymentStatus("status").notNull().default("authentifizierung"),
+    cardLast4: text("card_last4").notNull(),
+    cardHolder: text("card_holder").notNull(),
+    transactionId: text("transaction_id").notNull().unique(),
+    challengeHash: text("challenge_hash"),
+    challengeExpiresAt: timestamp("challenge_expires_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  (t) => [index("payments_application_idx").on(t.applicationId)],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Protokoll                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -381,3 +416,4 @@ export type TrafficNotice = typeof trafficNotices.$inferSelect;
 export type CityEvent = typeof cityEvents.$inferSelect;
 export type AppointmentSlot = typeof appointmentSlots.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
+export type Payment = typeof payments.$inferSelect;

@@ -169,11 +169,11 @@ export async function markFeePaid(applicationId: string): Promise<ActionResult> 
 
   await db.batch([
     db.update(applications).set({ feePaidAt: new Date(), updatedAt: new Date() }).where(eq(applications.id, applicationId)),
-    db.insert(applicationEvents).values({ applicationId, type: "gebuehr", authorId: viewer.user.id }),
+    db.insert(applicationEvents).values({ applicationId, type: "gebuehr", authorId: viewer.user.id, message: "Barzahlung an der Kasse verbucht." }),
   ]);
   revalidate(row.app.reference);
 
-  return { ok: true, message: "Gebühr als bezahlt markiert." };
+  return { ok: true, message: "Barzahlung verbucht." };
 }
 
 export async function issueDocument(
