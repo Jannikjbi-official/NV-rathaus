@@ -59,7 +59,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 14 },
   pages: { signIn: "/anmelden", error: "/anmelden" },
   providers: [
-    Discord({ authorization: { params: { scope: "identify guilds.members.read" } } }),
+    Discord({
+      // Discord sendet beim Rücksprung den Parameter "iss" (RFC 9207). Ohne festen
+      // Issuer vergleicht Auth.js gegen einen Platzhalter und der Login scheitert.
+      issuer: "https://discord.com",
+      authorization: { params: { scope: "identify guilds.members.read" } },
+    }),
     ...(devLoginEnabled
       ? [
           Credentials({
