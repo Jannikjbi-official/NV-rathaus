@@ -7,17 +7,19 @@ export function PageHeader({
   description,
   crumbs = [],
   actions,
+  root = { label: "Startseite", href: "/" },
 }: {
   title: string;
   description?: React.ReactNode;
   crumbs?: { label: string; href?: string }[];
   actions?: React.ReactNode;
+  root?: { label: string; href: string };
 }) {
   return (
     <div className="mb-8 flex flex-col gap-3">
       {crumbs.length > 0 ? (
         <Breadcrumbs>
-          <Breadcrumbs.Item href="/">Startseite</Breadcrumbs.Item>
+          <Breadcrumbs.Item href={root.href}>{root.label}</Breadcrumbs.Item>
           {crumbs.map((c) => (
             <Breadcrumbs.Item key={c.label} href={c.href}>
               {c.label}

@@ -124,7 +124,7 @@ export function ServiceEditor({ initial, departments }: { initial: ServiceInput;
           <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(k as "formular" | "allgemein")}>
             <Tabs.ListContainer>
               <Tabs.List aria-label="Bereich">
-                <Tabs.Tab id="formular">Formular ({svc.fields.length})<Tabs.Indicator /></Tabs.Tab>
+                <Tabs.Tab className="whitespace-nowrap" id="formular">Formular ({svc.fields.length})<Tabs.Indicator /></Tabs.Tab>
                 <Tabs.Tab id="allgemein">Allgemein<Tabs.Indicator /></Tabs.Tab>
               </Tabs.List>
             </Tabs.ListContainer>

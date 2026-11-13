@@ -49,6 +49,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ sl
   return (
     <>
       <PageHeader
+        root={{ label: "Verwaltung", href: "/verwaltung" }}
         crumbs={[{ label: "Leistungen", href: "/verwaltung/leistungen" }, { label: s.title }]}
         description={`Formular-Version ${s.version}. Öffentlich unter /leistungen/${s.slug}`}
         title={s.title}

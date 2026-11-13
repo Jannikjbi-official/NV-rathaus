@@ -13,7 +13,8 @@
 		"db:migrate": "node --env-file-if-exists=.env --import tsx db/migrate.ts",
 		"db:seed": "node --env-file-if-exists=.env --import tsx db/seed/index.ts",
 		"db:studio": "drizzle-kit studio",
-		"images": "node scripts/generate-placeholders.mjs"
+		"images": "node scripts/generate-placeholders.mjs",
+		"vercel-build": "node --import tsx db/migrate.ts && next build"
 	},
 	"dependencies": {
 		"@gravity-ui/icons": "^2.23.1",
