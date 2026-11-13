@@ -10,6 +10,7 @@ import { applications, citizens, departments, documents, services, users } from 
 
 import { siteUrl } from "./applications";
 import { documentState } from "./documents";
+import { DOCUMENT_TYPES } from "./status";
 
 const owner = alias(users, "owner");
 
@@ -109,4 +110,71 @@ export async function getDocumentByNumber(number: string) {
   const [doc] = await toRender(rows);
 
   return doc ? { doc, departmentId: rows[0].doc.departmentId } : null;
+}
+
+/** Ausgestellte Dokumente eines Antrags, fertig zum Rendern. */
+export async function getDocumentsForApplication(applicationId: string) {
+  return toRender(await query().where(eq(documents.applicationId, applicationId)).orderBy(desc(documents.issuedAt)));
+}
+
+/**
+ * Entwurf eines noch nicht ausgestellten Dokuments für die Live-Vorschau in der
+ * Bearbeitung. Nummer und Prüf-QR sind Platzhalter.
+ */
+export async function getDraftDocument(applicationId: string, preset: { title: string; validUntil: string | null; details: Record<string, string> }): Promise<DocRender | null> {
+  const [r] = await db
+    .select({ app: applications, citizen: citizens, department: departments, service: services, avatarUrl: owner.avatarUrl })
+    .from(applications)
+    .innerJoin(citizens, eq(applications.citizenId, citizens.id))
+    .innerJoin(departments, eq(applications.departmentId, departments.id))
+    .innerJoin(services, eq(applications.serviceId, services.id))
+    .innerJoin(owner, eq(owner.id, citizens.userId))
+    .where(eq(applications.id, applicationId))
+    .limit(1);
+
+  if (!r?.service.issuesDocument) return null;
+  const number = `NV-${DOCUMENT_TYPES[r.service.issuesDocument].prefix}-MUSTER`;
+  const qrSvg = await QRCode.toString(`${siteUrl()}/pruefen`, { type: "svg", margin: 0, color: { dark: "#1d1a1fff", light: "#00000000" } });
+
+  return {
+    number,
+    type: r.service.issuesDocument,
+    title: preset.title,
+    details: preset.details,
+    issuedAt: new Date().toISOString(),
+    validUntil: preset.validUntil,
+    state: { label: "Vorschau", tone: "warning" },
+    revokedReason: null,
+    holder: {
+      firstName: r.citizen.firstName,
+      lastName: r.citizen.lastName,
+      birthName: r.citizen.birthName,
+      birthDate: r.citizen.birthDate,
+      birthPlace: r.citizen.birthPlace,
+      nationality: r.citizen.nationality,
+      gender: r.citizen.gender,
+      heightCm: r.citizen.heightCm ?? (Number(r.app.data.groesse) || null),
+      eyeColor: r.citizen.eyeColor ?? ((r.app.data.augenfarbe as string) || null),
+      street: r.citizen.street,
+      postalCode: r.citizen.postalCode,
+      district: r.citizen.district,
+      citizenNumber: r.citizen.citizenNumber,
+      maritalStatus: r.citizen.maritalStatus,
+      photoUrl: r.avatarUrl ? `/api/lichtbild/${r.citizen.userId}` : null,
+    },
+    authority: { name: r.department.name, address: r.department.address, phone: r.department.phone },
+    application: {
+      reference: r.app.reference,
+      serviceSlug: r.service.slug,
+      serviceTitle: r.service.title,
+      submittedAt: r.app.submittedAt.toISOString(),
+      decidedAt: r.app.decidedAt?.toISOString() ?? null,
+      feeCents: r.app.feeCents,
+      feePaid: !!r.app.feePaidAt,
+      data: r.app.data,
+    },
+    issuer: null,
+    verifyUrl: `${siteUrl()}/pruefen`,
+    qrSvg,
+  };
 }

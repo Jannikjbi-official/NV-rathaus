@@ -15,6 +15,8 @@ import {
 import { Button, Card, Input, Label, Modal, Separator, Tabs, TextArea, TextField, toast } from "@heroui/react";
 
 import { DateInput } from "@/components/forms/fields";
+import { DocumentThumb, DocumentViewer } from "@/components/documents/document-viewer";
+import type { DocRender } from "@/components/documents/types";
 import {
   addMessage,
   changeStatus,
@@ -51,6 +53,7 @@ function DecisionModal({
   confirm,
   variant,
   onConfirm,
+  templates = [],
 }: {
   trigger: React.ReactNode;
   title: string;
@@ -60,6 +63,7 @@ function DecisionModal({
   confirm: string;
   variant: "primary" | "danger";
   onConfirm: (message: string) => Promise<ActionResult>;
+  templates?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -77,6 +81,15 @@ function DecisionModal({
             </Modal.Header>
             <Modal.Body className="flex flex-col gap-3">
               <p className="text-sm text-muted">{description}</p>
+              {templates.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {templates.map((t) => (
+                    <Button key={t} size="sm" variant="tertiary" onPress={() => setText((cur) => (cur ? `${cur}\n${t}` : t))}>
+                      {t.length > 42 ? `${t.slice(0, 40)}…` : t}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
               <TextField isRequired={required} value={text} onChange={setText}>
                 <Label>{label}</Label>
                 <TextArea rows={4} />
@@ -107,6 +120,7 @@ export function Workbench({
   feePaid,
   preset,
   issuedCount,
+  draft,
 }: {
   applicationId: string;
   status: ApplicationStatus;
@@ -114,6 +128,7 @@ export function Workbench({
   feePaid: boolean;
   preset: Preset;
   issuedCount: number;
+  draft: DocRender | null;
 }) {
   const { pending, run } = useAction();
   const open = ["eingereicht", "in_bearbeitung", "rueckfrage"].includes(status);
@@ -147,6 +162,12 @@ export function Workbench({
               confirm="Rückfrage senden"
               description="Der Antrag pausiert, bis der Bürger antwortet."
               label="Ihre Rückfrage"
+              templates={[
+                "Bitte ergänzen Sie die fehlenden Angaben im Antrag.",
+                "Bitte buchen Sie einen Termin zur persönlichen Vorsprache im Bürgerkonto.",
+                "Bitte reichen Sie einen Nachweis über die Voraussetzungen nach.",
+                "Bitte bestätigen Sie die Angaben zu Ihrem Fahrzeug (FIN, Versicherung).",
+              ]}
               required
               title="Rückfrage stellen"
               trigger={<Button fullWidth variant="tertiary"><CircleQuestion />Rückfrage stellen</Button>}
@@ -157,6 +178,12 @@ export function Workbench({
               confirm="Ablehnen"
               description="Die Begründung wird dem Bürger angezeigt."
               label="Begründung"
+              templates={[
+                "Die gesetzlichen Voraussetzungen liegen nicht vor.",
+                "Das Mindestalter ist nicht erreicht.",
+                "Die Angaben sind unvollständig oder widersprüchlich.",
+                "Es besteht bereits ein gleichartiger Antrag.",
+              ]}
               required
               title="Antrag ablehnen"
               trigger={<Button fullWidth variant="danger-soft"><CircleXmark />Ablehnen</Button>}
@@ -184,7 +211,7 @@ export function Workbench({
         </Card>
       ) : null}
 
-      {preset && status === "genehmigt" ? <IssueDocument applicationId={applicationId} issuedCount={issuedCount} preset={preset} /> : null}
+      {preset && status === "genehmigt" ? <IssueDocument applicationId={applicationId} draft={draft} issuedCount={issuedCount} preset={preset} /> : null}
 
       <MessageBox applicationId={applicationId} />
     </div>
@@ -224,9 +251,11 @@ function MessageBox({ applicationId }: { applicationId: string }) {
   );
 }
 
-function IssueDocument({ applicationId, preset, issuedCount }: { applicationId: string; preset: NonNullable<Preset>; issuedCount: number }) {
+function IssueDocument({ applicationId, preset, issuedCount, draft }: { applicationId: string; preset: NonNullable<Preset>; issuedCount: number; draft: DocRender | null }) {
   const [title, setTitle] = useState(preset.title);
   const [rows, setRows] = useState(Object.entries(preset.details));
+  const [bigPreview, setBigPreview] = useState(false);
+  const previewDoc: DocRender | null = draft ? { ...draft, title, details: Object.fromEntries(rows.filter(([k, v]) => k.trim() && v.trim())) } : null;
   const { pending, run } = useAction();
 
   return (
@@ -235,6 +264,29 @@ function IssueDocument({ applicationId, preset, issuedCount }: { applicationId: 
         <FileText className="size-4 text-accent" />
         <Card.Title className="text-base">{issuedCount ? "Weiteres Dokument ausstellen" : "Dokument ausstellen"}</Card.Title>
       </Card.Header>
+      {previewDoc ? (
+        <Modal isOpen={bigPreview} onOpenChange={setBigPreview}>
+          <button aria-label="Große Vorschau öffnen" className="group flex flex-col gap-1.5 rounded-2xl bg-default/60 p-3 text-left" type="button">
+            <div className="mx-auto w-full" style={{ maxWidth: ["urkunde", "bescheid", "bescheinigung", "genehmigung", "gewerbeschein"].includes(previewDoc.type) ? 150 : undefined }}>
+              <DocumentThumb doc={previewDoc} />
+            </div>
+            <span className="text-center text-xs text-muted group-hover:text-foreground">Live-Vorschau · zum Vergrößern klicken</span>
+          </button>
+          <Modal.Backdrop>
+            <Modal.Container size="lg">
+              <Modal.Dialog className="sm:max-w-5xl">
+                <Modal.CloseTrigger />
+                <Modal.Header>
+                  <Modal.Heading>Vorschau: {previewDoc.title}</Modal.Heading>
+                </Modal.Header>
+                <Modal.Body>
+                  <DocumentViewer doc={previewDoc} />
+                </Modal.Body>
+              </Modal.Dialog>
+            </Modal.Container>
+          </Modal.Backdrop>
+        </Modal>
+      ) : null}
       <form
         className="flex flex-col gap-3"
         onSubmit={(e) => {

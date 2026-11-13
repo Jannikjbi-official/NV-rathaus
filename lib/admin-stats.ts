@@ -245,3 +245,60 @@ export async function getTopServices(departmentIds: string[], limit = 5) {
     .orderBy(desc(count()))
     .limit(limit);
 }
+
+export type TaskItem = {
+  kind: "ueberfaellig" | "antwort" | "dokument" | "gebuehr";
+  reference: string;
+  service: string;
+  citizen: string;
+  since: Date;
+};
+
+/**
+ * Handlungsbedarf: überfällige Anträge, neue Antworten von Bürgern,
+ * genehmigte Anträge ohne Dokument und offene Gebühren.
+ */
+export async function getTasks(departmentIds: string[]): Promise<TaskItem[]> {
+  const ids = scope(departmentIds);
+  const [queue, active] = await Promise.all([
+    getQueue(departmentIds, { limit: 500 }),
+    db
+      .select({
+        id: applications.id,
+        reference: applications.reference,
+        status: applications.status,
+        feeCents: applications.feeCents,
+        feePaidAt: applications.feePaidAt,
+        updatedAt: applications.updatedAt,
+        decidedAt: applications.decidedAt,
+        service: services.title,
+        issues: services.issuesDocument,
+        firstName: citizens.firstName,
+        lastName: citizens.lastName,
+        lastEvent: sql<string | null>`(select e.type from application_events e where e.application_id = ${applications.id} and e.is_internal = false order by e.created_at desc limit 1)`,
+        docCount: sql<number>`(select count(*)::int from documents d where d.application_id = ${applications.id})`,
+      })
+      .from(applications)
+      .innerJoin(services, eq(applications.serviceId, services.id))
+      .innerJoin(citizens, eq(applications.citizenId, citizens.id))
+      .where(and(inArray(applications.departmentId, ids), inArray(applications.status, ["in_bearbeitung", "genehmigt"])))
+      .orderBy(asc(applications.updatedAt))
+      .limit(300),
+  ]);
+
+  const tasks: TaskItem[] = queue
+    .filter((q) => q.overdue)
+    .map((q) => ({ kind: "ueberfaellig" as const, reference: q.reference, service: q.service, citizen: q.citizen, since: q.dueAt }));
+
+  for (const a of active) {
+    const base = { reference: a.reference, service: a.service, citizen: `${a.firstName} ${a.lastName}` };
+
+    if (a.status === "in_bearbeitung" && a.lastEvent === "antwort") tasks.push({ kind: "antwort", since: a.updatedAt, ...base });
+    if (a.status === "genehmigt" && a.feeCents > 0 && !a.feePaidAt) tasks.push({ kind: "gebuehr", since: a.decidedAt ?? a.updatedAt, ...base });
+    if (a.status === "genehmigt" && a.issues && Number(a.docCount) === 0) tasks.push({ kind: "dokument", since: a.decidedAt ?? a.updatedAt, ...base });
+  }
+
+  const order = { ueberfaellig: 0, antwort: 1, dokument: 2, gebuehr: 3 };
+
+  return tasks.sort((x, y) => order[x.kind] - order[y.kind] || x.since.getTime() - y.since.getTime());
+}

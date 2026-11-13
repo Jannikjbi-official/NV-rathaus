@@ -7,9 +7,10 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { ActivityChart } from "@/components/verwaltung/activity-chart";
 import { AppointmentList, KpiTile, QueueList } from "@/components/verwaltung/dashboard-parts";
+import { TaskBoard } from "@/components/verwaltung/task-board";
 import { db } from "@/db";
 import { citizens, departments } from "@/db/schema";
-import { getDaily, getKpis, getQueue, getTodayAppointments, getTopServices } from "@/lib/admin-stats";
+import { getDaily, getKpis, getQueue, getTasks, getTodayAppointments, getTopServices } from "@/lib/admin-stats";
 import { formatDuration, openingStatus } from "@/lib/format";
 import { getRegisterCount, getRegisterRows, REGISTERS } from "@/lib/registers";
 import { canHandle, requireStaff } from "@/lib/viewer";
@@ -31,7 +32,7 @@ export default async function DepartmentDashboard({
   const active = registers.find((r) => r.id === sp.register) ?? registers[0];
   const q = sp.q?.trim() ?? "";
 
-  const [kpis, daily, queue, today, top, counts, rows, [{ n: citizenCount }]] = await Promise.all([
+  const [kpis, daily, queue, today, top, counts, rows, [{ n: citizenCount }], tasks] = await Promise.all([
     getKpis([dept.id]),
     getDaily([dept.id]),
     getQueue([dept.id], { limit: 6 }),
@@ -40,6 +41,7 @@ export default async function DepartmentDashboard({
     Promise.all(registers.map((r) => getRegisterCount(dept.id, r))),
     active ? getRegisterRows(dept.id, active, q) : Promise.resolve([]),
     slug === "buergeramt" ? db.select({ n: count() }).from(citizens) : Promise.resolve([{ n: 0 }]),
+    getTasks([dept.id]),
   ]);
   const status = openingStatus(dept.openingHours);
   const registerHref = (id: string, query = "") => `/verwaltung/amt/${slug}?register=${id}${query ? `&q=${encodeURIComponent(query)}` : ""}#register`;
@@ -78,9 +80,12 @@ export default async function DepartmentDashboard({
         </div>
 
         <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
-          <Card>
-            <ActivityChart data={daily} title={`Anträge im ${dept.name}, letzte 14 Tage`} />
-          </Card>
+          <div className="flex flex-col gap-6">
+            <TaskBoard tasks={tasks} />
+            <Card>
+              <ActivityChart data={daily} title={`Anträge im ${dept.name}, letzte 14 Tage`} />
+            </Card>
+          </div>
           <div className="flex flex-col gap-6">
             <Card>
               <Card.Header><Card.Title className="text-base">Termine heute</Card.Title></Card.Header>

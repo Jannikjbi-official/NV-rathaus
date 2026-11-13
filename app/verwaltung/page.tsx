@@ -5,7 +5,8 @@ import { Alert, Card, Chip, Link } from "@heroui/react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ActivityChart } from "@/components/verwaltung/activity-chart";
 import { ActivityFeed, AppointmentList, KpiTile, QueueList } from "@/components/verwaltung/dashboard-parts";
-import { getDaily, getKpis, getQueue, getRecentActivity, getTodayAppointments } from "@/lib/admin-stats";
+import { TaskBoard } from "@/components/verwaltung/task-board";
+import { getDaily, getKpis, getQueue, getRecentActivity, getTasks, getTodayAppointments } from "@/lib/admin-stats";
 import { formatDuration } from "@/lib/format";
 import { getDepartments } from "@/lib/queries";
 import { requireStaff } from "@/lib/viewer";
@@ -14,7 +15,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
   const [viewer, { hinweis }] = await Promise.all([requireStaff(), searchParams]);
   const ids = viewer.staffDepartments.map((d) => d.id);
 
-  const [kpis, daily, queue, mine, today, activity, departments, perDept] = await Promise.all([
+  const [kpis, daily, queue, mine, today, activity, departments, perDept, tasks] = await Promise.all([
     getKpis(ids),
     getDaily(ids),
     getQueue(ids, { limit: 6 }),
@@ -23,6 +24,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
     getRecentActivity(ids),
     getDepartments(),
     Promise.all(viewer.staffDepartments.map(async (d) => ({ id: d.id, k: await getKpis([d.id]) }))),
+    getTasks(ids),
   ]);
   const deptCards = departments.filter((d) => ids.includes(d.id));
   const hour = Number(new Intl.DateTimeFormat("de-DE", { hour: "numeric", timeZone: "Europe/Berlin" }).format(new Date()));
@@ -52,9 +54,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
         </div>
 
         <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
-          <Card>
-            <ActivityChart data={daily} title="Anträge der letzten 14 Tage" />
-          </Card>
+          <TaskBoard tasks={tasks} />
           <Card>
             <Card.Header className="flex-row items-center justify-between">
               <Card.Title className="text-base">Heute im Rathaus</Card.Title>
@@ -62,6 +62,20 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
             </Card.Header>
             <Card.Content>
               <AppointmentList items={today} />
+            </Card.Content>
+          </Card>
+        </div>
+
+        <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
+          <Card>
+            <ActivityChart data={daily} title="Anträge der letzten 14 Tage" />
+          </Card>
+          <Card>
+            <Card.Header>
+              <Card.Title className="text-base">Letzte Aktivität</Card.Title>
+            </Card.Header>
+            <Card.Content>
+              <ActivityFeed items={activity.slice(0, 6)} />
             </Card.Content>
           </Card>
         </div>
@@ -90,36 +104,26 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
           </div>
         </section>
 
-        <div className="grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
-          <div className="flex flex-col gap-6">
-            <Card>
-              <Card.Header className="flex-row items-center justify-between">
-                <div>
-                  <Card.Title className="text-base">Als Nächstes</Card.Title>
-                  <Card.Description>Älteste offene Anträge zuerst</Card.Description>
-                </div>
-                <Link className="text-sm" href="/verwaltung/posteingang?status=offen">Posteingang<Link.Icon><ArrowRight /></Link.Icon></Link>
-              </Card.Header>
-              <Card.Content>
-                <QueueList empty="Alle Anträge sind bearbeitet." items={queue} />
-              </Card.Content>
-            </Card>
-            <Card>
-              <Card.Header className="flex-row items-center justify-between">
-                <Card.Title className="text-base">Mir zugewiesen</Card.Title>
-                <Link className="text-sm" href="/verwaltung/posteingang?status=meine">Alle<Link.Icon><ArrowRight /></Link.Icon></Link>
-              </Card.Header>
-              <Card.Content>
-                <QueueList empty="Ihnen ist gerade nichts zugewiesen." items={mine} />
-              </Card.Content>
-            </Card>
-          </div>
+        <div className="grid items-start gap-6 xl:grid-cols-2">
           <Card>
-            <Card.Header>
-              <Card.Title className="text-base">Letzte Aktivität</Card.Title>
+            <Card.Header className="flex-row items-center justify-between">
+              <div>
+                <Card.Title className="text-base">Als Nächstes</Card.Title>
+                <Card.Description>Älteste offene Anträge zuerst</Card.Description>
+              </div>
+              <Link className="text-sm" href="/verwaltung/posteingang?status=offen">Posteingang<Link.Icon><ArrowRight /></Link.Icon></Link>
             </Card.Header>
             <Card.Content>
-              <ActivityFeed items={activity} />
+              <QueueList empty="Alle Anträge sind bearbeitet." items={queue} />
+            </Card.Content>
+          </Card>
+          <Card>
+            <Card.Header className="flex-row items-center justify-between">
+              <Card.Title className="text-base">Mir zugewiesen</Card.Title>
+              <Link className="text-sm" href="/verwaltung/posteingang?status=meine">Alle<Link.Icon><ArrowRight /></Link.Icon></Link>
+            </Card.Header>
+            <Card.Content>
+              <QueueList empty="Ihnen ist gerade nichts zugewiesen." items={mine} />
             </Card.Content>
           </Card>
         </div>
