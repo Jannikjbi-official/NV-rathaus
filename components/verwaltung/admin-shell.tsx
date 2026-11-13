@@ -16,6 +16,7 @@ import { Avatar, Chip, Separator } from "@heroui/react";
 
 import { Seal } from "@/components/brand/seal";
 import { SideNav } from "@/components/ui/side-nav";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { initials } from "@/lib/format";
 
 export function AdminShell({
@@ -90,10 +91,13 @@ export function AdminShell({
               </div>
             </div>
           </div>
-          <NextLink className="flex items-center gap-2 text-sm text-muted hover:text-foreground" href="/">
-            <ArrowLeft className="size-4" />
-            Zum Stadtportal
-          </NextLink>
+          <div className="flex items-center justify-between gap-2">
+            <NextLink className="flex items-center gap-2 text-sm text-muted hover:text-foreground" href="/">
+              <ArrowLeft className="size-4" />
+              Zum Stadtportal
+            </NextLink>
+            <ThemeToggle size="sm" />
+          </div>
         </div>
       </aside>
       <main className="min-w-0 px-4 py-6 sm:px-8 lg:py-8">{children}</main>

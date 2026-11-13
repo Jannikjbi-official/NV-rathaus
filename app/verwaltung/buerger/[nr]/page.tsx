@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { Card, Chip, Separator, Table } from "@heroui/react";
+import { Card, Chip, Link, Separator, Table } from "@heroui/react";
 
 import { StatusChip } from "@/components/applications/parts";
 import { PageHeader } from "@/components/ui/page-header";
@@ -69,7 +69,7 @@ export default async function CitizenRecordPage({ params }: { params: Promise<{ 
                   {i > 0 ? <Separator /> : null}
                   <div className="flex flex-wrap items-center gap-3 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{d.title} <span className="text-muted">({DOCUMENT_TYPES[d.type].label})</span></p>
+                      <Link className="text-sm font-medium" href={`/verwaltung/dokumente/${d.number}`}>{d.title} <span className="font-normal text-muted">({DOCUMENT_TYPES[d.type].label})</span></Link>
                       <p className="text-xs text-muted">
                         <span className="font-mono">{d.number}</span> · {department} · {formatDate(d.issuedAt)}
                         {d.revokedReason ? ` · ${d.revokedReason}` : ""}

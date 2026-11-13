@@ -20,6 +20,7 @@ import { ServiceSearch, type SearchItem } from "./service-search";
 
 import { BrandMark } from "@/components/brand/seal";
 import { ButtonLink } from "@/components/ui/button-link";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { initials } from "@/lib/format";
 import { signOutAction } from "@/app/actions/auth";
 
@@ -67,6 +68,7 @@ export function SiteHeader({ account, services }: { account: HeaderAccount; serv
           <ServiceSearch className="order-3 w-full lg:order-none lg:ml-auto lg:max-w-md" items={services} />
 
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
+            <ThemeToggle />
             {account ? (
               <>
                 <ButtonLink className="hidden md:inline-flex" href="/konto/termine" variant="tertiary">

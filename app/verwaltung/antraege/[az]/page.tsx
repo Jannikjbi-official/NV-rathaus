@@ -85,7 +85,7 @@ export default async function AdminApplicationPage({ params }: { params: Promise
               <Card.Content className="gap-2 text-sm">
                 {docs.map((d) => (
                   <div key={d.id} className="flex items-center justify-between gap-3">
-                    <span>{d.title}</span>
+                    <Link href={`/verwaltung/dokumente/${d.number}`}>{d.title}</Link>
                     <Link className="font-mono text-xs" href={`/pruefen?nr=${d.number}`}>{d.number}</Link>
                   </div>
                 ))}

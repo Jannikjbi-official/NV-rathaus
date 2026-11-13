@@ -4,7 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 
 import { siteConfig } from "@/config/site";
-import { fontSans } from "@/config/fonts";
+import { fontMrz, fontSans, fontSerif, fontSignature } from "@/config/fonts";
 
 export const metadata: Metadata = {
   title: { default: siteConfig.name, template: `%s · ${siteConfig.name}` },
@@ -13,13 +13,16 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#c41e1e",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f0f11" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html className="light" data-theme="light" lang="de">
-      <body className={`${fontSans.variable} min-h-screen bg-background font-sans text-foreground antialiased`}>
+    <html suppressHydrationWarning lang="de">
+      <body className={`${fontSans.variable} ${fontSignature.variable} ${fontSerif.variable} ${fontMrz.variable} min-h-screen bg-background font-sans text-foreground antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

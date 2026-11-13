@@ -5,12 +5,12 @@ import { ArrowRight, Calendar, ChevronRight, FileText, Receipt } from "@gravity-
 import { Alert, Card, Link, Separator } from "@heroui/react";
 
 import { StatusChip } from "@/components/applications/parts";
-import { DocumentCard } from "@/components/documents/document-card";
+import { DocumentThumb } from "@/components/documents/document-viewer";
 import { ButtonLink } from "@/components/ui/button-link";
 import { db } from "@/db";
 import { applications, appointments, appointmentSlots, departments, services } from "@/db/schema";
 import { referenceSlug } from "@/lib/applications";
-import { getCitizenDocuments } from "@/lib/document-data";
+import { getDocumentsForCitizen } from "@/lib/document-render";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { OPEN_STATUSES } from "@/lib/status";
 import { requireResident } from "@/lib/viewer";
@@ -31,7 +31,7 @@ export default async function KontoPage({ searchParams }: { searchParams: Promis
       .orderBy(desc(applications.updatedAt))
       .limit(5),
     db.select({ n: count() }).from(applications).where(and(eq(applications.citizenId, cid), inArray(applications.status, OPEN_STATUSES))),
-    getCitizenDocuments(cid),
+    getDocumentsForCitizen(cid),
     db
       .select({ startsAt: appointmentSlots.startsAt, purpose: appointments.purpose, department: departments.name })
       .from(appointments)
@@ -106,7 +106,7 @@ export default async function KontoPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-col gap-4">
           {validDocs[0] ? (
             <NextLink className="rounded-2xl" href={`/konto/dokumente/${validDocs[0].number}`}>
-              <DocumentCard doc={validDocs[0]} size="sm" />
+              <DocumentThumb doc={validDocs[0]} />
             </NextLink>
           ) : null}
           <Card>

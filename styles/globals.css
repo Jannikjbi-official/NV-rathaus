@@ -25,20 +25,3 @@
 	--accent-foreground: var(--snow);
 }
 
-/* Druckansicht für Dokumente: nur die Dokumentkarte */
-@media print {
-	body * {
-		visibility: hidden;
-	}
-	.print-area,
-	.print-area * {
-		visibility: visible;
-		-webkit-print-color-adjust: exact;
-		print-color-adjust: exact;
-	}
-	.print-area {
-		position: absolute;
-		inset: 0 auto auto 0;
-		width: 140mm;
-	}
-}
