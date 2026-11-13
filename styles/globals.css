@@ -25,3 +25,17 @@
 	--accent-foreground: var(--snow);
 }
 
+
+/* Diagrammfarben (geprüft auf Farbsehschwäche und Kontrast, hell und dunkel) */
+:root,
+.light,
+[data-theme="light"] {
+	--chart-1: #2a78d6;
+	--chart-2: #eb6834;
+}
+
+.dark,
+[data-theme="dark"] {
+	--chart-1: #3987e5;
+	--chart-2: #d95926;
+}

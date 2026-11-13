@@ -21,7 +21,7 @@ export default async function VerwaltungLayout({ children }: { children: React.R
   return (
     <AdminShell
       avatarUrl={viewer.user.avatarUrl}
-      departments={viewer.staffDepartments.map((d) => d.name)}
+      departments={viewer.staffDepartments.map((d) => ({ slug: d.slug, name: d.name, icon: d.icon }))}
       inboxCount={n}
       isAdmin={viewer.isAdmin}
       name={viewer.name}

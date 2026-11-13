@@ -7,6 +7,7 @@ import {
   Briefcase,
   FileText,
   Gear,
+  LayoutCellsLarge,
   LayoutList,
   Megaphone,
   Persons,
@@ -14,10 +15,13 @@ import {
 } from "@gravity-ui/icons";
 import { Avatar, Chip, Separator } from "@heroui/react";
 
+import { AdminSearch } from "./admin-search";
+
 import { Seal } from "@/components/brand/seal";
 import { SideNav } from "@/components/ui/side-nav";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { initials } from "@/lib/format";
+import { Icon as DeptGlyph } from "@/components/ui/icon";
 
 export function AdminShell({
   children,
@@ -30,7 +34,7 @@ export function AdminShell({
   children: React.ReactNode;
   name: string;
   avatarUrl: string | null;
-  departments: string[];
+  departments: { slug: string; name: string; icon: string }[];
   isAdmin: boolean;
   inboxCount: number;
 }) {
@@ -48,13 +52,21 @@ export function AdminShell({
         <div className="flex flex-col gap-5 overflow-y-auto px-3 py-4 lg:flex-1">
           <SideNav
             items={[
-              { href: "/verwaltung", label: "Posteingang", icon: Tray, badge: inboxCount, exact: true },
+              { href: "/verwaltung", label: "Übersicht", icon: LayoutCellsLarge, exact: true },
+              { href: "/verwaltung/posteingang", label: "Posteingang", icon: Tray, badge: inboxCount },
               { href: "/verwaltung/antraege", label: "Alle Anträge", icon: LayoutList },
               { href: "/verwaltung/termine", label: "Termine", icon: Calendar },
               { href: "/verwaltung/buerger", label: "Melderegister", icon: Persons },
             ]}
             label="Bearbeitung"
           />
+          <div>
+            <p className="px-3 pb-1.5 text-xs font-medium text-muted">Meine Ämter</p>
+            <SideNav
+              items={departments.map((d) => ({ href: `/verwaltung/amt/${d.slug}`, label: d.name, icon: DeptIcon(d.icon) }))}
+              label="Meine Ämter"
+            />
+          </div>
           <div>
             <p className="px-3 pb-1.5 text-xs font-medium text-muted">Inhalte</p>
             <SideNav
@@ -86,7 +98,7 @@ export function AdminShell({
                 {isAdmin ? (
                   <Chip color="accent" size="sm" variant="soft">Admin</Chip>
                 ) : (
-                  departments.slice(0, 2).map((d) => <Chip key={d} size="sm" variant="soft">{d}</Chip>)
+                  departments.slice(0, 2).map((d) => <Chip key={d.slug} size="sm" variant="soft">{d.name}</Chip>)
                 )}
               </div>
             </div>
@@ -100,7 +112,18 @@ export function AdminShell({
           </div>
         </div>
       </aside>
-      <main className="min-w-0 px-4 py-6 sm:px-8 lg:py-8">{children}</main>
+      <div className="min-w-0">
+        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-separator bg-background/80 px-4 py-3 backdrop-blur-lg sm:px-8">
+          <AdminSearch />
+        </div>
+        <main className="px-4 py-6 sm:px-8 lg:py-8">{children}</main>
+      </div>
     </div>
   );
+}
+
+function DeptIcon(name: string) {
+  return function Icon({ className }: { className?: string }) {
+    return <DeptGlyph className={className} name={name} />;
+  };
 }

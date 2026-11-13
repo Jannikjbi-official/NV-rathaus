@@ -24,7 +24,7 @@ export const getViewer = cache(async () => {
   const [[citizen], allDepartments] = await Promise.all([
     db.select().from(citizens).where(eq(citizens.userId, id)).limit(1),
     db
-      .select({ id: departments.id, slug: departments.slug, name: departments.name, roleId: departments.discordRoleId })
+      .select({ id: departments.id, slug: departments.slug, name: departments.name, icon: departments.icon, roleId: departments.discordRoleId })
       .from(departments)
       .orderBy(asc(departments.sortOrder)),
   ]);

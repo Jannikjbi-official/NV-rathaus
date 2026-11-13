@@ -7,10 +7,12 @@ import { db } from "@/db";
 import { applications, citizens, departments, services, users, type ApplicationStatus } from "@/db/schema";
 import { referenceSlug } from "@/lib/applications";
 import { formatEuro, formatRelative } from "@/lib/format";
+import { OPEN_STATUSES as OPEN } from "@/lib/status";
 import type { Viewer } from "@/lib/viewer";
 
-const TABS: { id: string; label: string; statuses: ApplicationStatus[] | null }[] = [
+const TABS: { id: string; label: string; statuses: ApplicationStatus[] | null; mine?: boolean }[] = [
   { id: "neu", label: "Neu", statuses: ["eingereicht"] },
+  { id: "meine", label: "Mir zugewiesen", statuses: ["eingereicht", "in_bearbeitung", "rueckfrage"], mine: true },
   { id: "bearbeitung", label: "In Bearbeitung", statuses: ["in_bearbeitung"] },
   { id: "rueckfrage", label: "Rückfrage", statuses: ["rueckfrage"] },
   { id: "offen", label: "Alle offenen", statuses: ["eingereicht", "in_bearbeitung", "rueckfrage"] },
@@ -49,7 +51,11 @@ export async function ApplicationsInbox({
     );
   }
 
-  const where = and(...scope, tab.statuses ? inArray(applications.status, tab.statuses) : undefined);
+  const where = and(
+    ...scope,
+    tab.statuses ? inArray(applications.status, tab.statuses) : undefined,
+    tab.mine ? eq(applications.assigneeId, viewer.user.id) : undefined,
+  );
 
   const [rows, counts] = await Promise.all([
     db
@@ -61,6 +67,7 @@ export async function ApplicationsInbox({
         feeCents: applications.feeCents,
         feePaidAt: applications.feePaidAt,
         service: services.title,
+        processingDays: services.processingDays,
         department: departments.name,
         firstName: citizens.firstName,
         lastName: citizens.lastName,
@@ -83,8 +90,16 @@ export async function ApplicationsInbox({
       .groupBy(applications.status),
   ]);
 
-  const countFor = (statuses: ApplicationStatus[] | null) =>
-    counts.filter((c) => !statuses || statuses.includes(c.status)).reduce((a, c) => a + c.n, 0);
+  const [{ n: mineCount }] = await db
+    .select({ n: count() })
+    .from(applications)
+    .innerJoin(citizens, eq(applications.citizenId, citizens.id))
+    .innerJoin(services, eq(applications.serviceId, services.id))
+    .where(and(...scope, eq(applications.assigneeId, viewer.user.id), inArray(applications.status, OPEN)));
+  const countFor = (t: (typeof TABS)[number]) =>
+    t.mine ? mineCount : counts.filter((c) => !t.statuses || t.statuses.includes(c.status)).reduce((a, c) => a + c.n, 0);
+  const isOverdue = (r: (typeof rows)[number]) =>
+    OPEN.includes(r.status) && r.status !== "rueckfrage" && r.submittedAt.getTime() + Math.max(1, r.processingDays) * 86400000 < Date.now();
   const href = (status: string) => {
     const sp = new URLSearchParams();
 
@@ -118,7 +133,7 @@ export async function ApplicationsInbox({
             {TABS.map((t) => (
               <Tabs.Tab key={t.id} className="gap-2 whitespace-nowrap" href={href(t.id)} id={t.id}>
                 {t.label}
-                <span className="text-xs tabular-nums text-muted">{countFor(t.statuses)}</span>
+                <span className="text-xs tabular-nums text-muted">{countFor(t)}</span>
                 <Tabs.Indicator />
               </Tabs.Tab>
             ))}
@@ -153,7 +168,12 @@ export async function ApplicationsInbox({
                     </Table.Cell>
                     <Table.Cell>{r.firstName} {r.lastName}</Table.Cell>
                     <Table.Cell><span className="whitespace-nowrap font-mono text-xs">{r.reference}</span></Table.Cell>
-                    <Table.Cell><StatusChip status={r.status} /></Table.Cell>
+                    <Table.Cell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <StatusChip status={r.status} />
+                        {isOverdue(r) ? <Chip color="danger" size="sm" variant="soft">überfällig</Chip> : null}
+                      </div>
+                    </Table.Cell>
                     <Table.Cell>
                       {r.feeCents > 0 ? (
                         <Chip color={r.feePaidAt ? "success" : "warning"} size="sm" variant="soft">{formatEuro(r.feeCents)}</Chip>

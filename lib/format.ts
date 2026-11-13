@@ -94,3 +94,14 @@ export function initials(name: string) {
     .slice(0, 2)
     .toUpperCase();
 }
+
+/** Dauer in Tagen lesbar: "35 Min", "5,5 Std", "2,3 Tage". */
+export function formatDuration(days: number | null) {
+  if (days === null) return "–";
+  const hours = days * 24;
+
+  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} Min`;
+  if (hours < 24) return `${hours.toLocaleString("de-DE", { maximumFractionDigits: 1 })} Std`;
+
+  return `${days.toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tage`;
+}
