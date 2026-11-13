@@ -1,0 +1,278 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import {
+  CircleCheck,
+  CircleQuestion,
+  CircleXmark,
+  FileText,
+  Hand,
+  PaperPlane,
+  Plus,
+  Receipt,
+  TrashBin,
+} from "@gravity-ui/icons";
+import { Button, Card, Input, Label, Modal, Separator, Tabs, TextArea, TextField, toast } from "@heroui/react";
+
+import { DateInput } from "@/components/forms/fields";
+import {
+  addMessage,
+  changeStatus,
+  issueDocument,
+  markFeePaid,
+  type ActionResult,
+} from "@/app/actions/verwaltung";
+import type { ApplicationStatus } from "@/db/schema";
+import { formatEuro } from "@/lib/format";
+
+type Preset = { title: string; validUntil: string | null; details: Record<string, string> } | null;
+
+function useAction() {
+  const [pending, start] = useTransition();
+  const run = (fn: () => Promise<ActionResult>, onOk?: () => void) =>
+    start(async () => {
+      const res = await fn();
+
+      if (res.ok) {
+        toast.success(res.message);
+        onOk?.();
+      } else toast.danger(res.message);
+    });
+
+  return { pending, run };
+}
+
+function DecisionModal({
+  trigger,
+  title,
+  description,
+  label,
+  required,
+  confirm,
+  variant,
+  onConfirm,
+}: {
+  trigger: React.ReactNode;
+  title: string;
+  description: string;
+  label: string;
+  required: boolean;
+  confirm: string;
+  variant: "primary" | "danger";
+  onConfirm: (message: string) => Promise<ActionResult>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const { pending, run } = useAction();
+
+  return (
+    <Modal isOpen={open} onOpenChange={setOpen}>
+      {trigger}
+      <Modal.Backdrop>
+        <Modal.Container>
+          <Modal.Dialog className="sm:max-w-lg">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Heading>{title}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body className="flex flex-col gap-3">
+              <p className="text-sm text-muted">{description}</p>
+              <TextField isRequired={required} value={text} onChange={setText}>
+                <Label>{label}</Label>
+                <TextArea rows={4} />
+              </TextField>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button slot="close" variant="tertiary">Abbrechen</Button>
+              <Button
+                isDisabled={required && text.trim().length < 3}
+                isPending={pending}
+                variant={variant}
+                onPress={() => run(() => onConfirm(text), () => { setOpen(false); setText(""); })}
+              >
+                {confirm}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
+  );
+}
+
+export function Workbench({
+  applicationId,
+  status,
+  feeCents,
+  feePaid,
+  preset,
+  issuedCount,
+}: {
+  applicationId: string;
+  status: ApplicationStatus;
+  feeCents: number;
+  feePaid: boolean;
+  preset: Preset;
+  issuedCount: number;
+}) {
+  const { pending, run } = useAction();
+  const open = ["eingereicht", "in_bearbeitung", "rueckfrage"].includes(status);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {open ? (
+        <Card>
+          <Card.Header>
+            <Card.Title className="text-base">Entscheidung</Card.Title>
+            <Card.Description>Der Bürger wird per Discord benachrichtigt.</Card.Description>
+          </Card.Header>
+          <Card.Content className="gap-2">
+            {status === "eingereicht" ? (
+              <Button fullWidth isPending={pending} variant="secondary" onPress={() => run(() => changeStatus(applicationId, "in_bearbeitung"))}>
+                <Hand />
+                Bearbeitung übernehmen
+              </Button>
+            ) : null}
+            <DecisionModal
+              confirm="Genehmigen"
+              description="Optional: Hinweis an den Bürger, z. B. zur Abholung."
+              label="Nachricht (optional)"
+              required={false}
+              title="Antrag genehmigen"
+              trigger={<Button fullWidth><CircleCheck />Genehmigen</Button>}
+              variant="primary"
+              onConfirm={(m) => changeStatus(applicationId, "genehmigt", m)}
+            />
+            <DecisionModal
+              confirm="Rückfrage senden"
+              description="Der Antrag pausiert, bis der Bürger antwortet."
+              label="Ihre Rückfrage"
+              required
+              title="Rückfrage stellen"
+              trigger={<Button fullWidth variant="tertiary"><CircleQuestion />Rückfrage stellen</Button>}
+              variant="primary"
+              onConfirm={(m) => changeStatus(applicationId, "rueckfrage", m)}
+            />
+            <DecisionModal
+              confirm="Ablehnen"
+              description="Die Begründung wird dem Bürger angezeigt."
+              label="Begründung"
+              required
+              title="Antrag ablehnen"
+              trigger={<Button fullWidth variant="danger-soft"><CircleXmark />Ablehnen</Button>}
+              variant="danger"
+              onConfirm={(m) => changeStatus(applicationId, "abgelehnt", m)}
+            />
+          </Card.Content>
+        </Card>
+      ) : null}
+
+      {feeCents > 0 ? (
+        <Card>
+          <Card.Header className="flex-row items-center justify-between">
+            <Card.Title className="text-base">Gebühr {formatEuro(feeCents)}</Card.Title>
+            <span className={`text-sm ${feePaid ? "text-success" : "text-warning"}`}>{feePaid ? "bezahlt" : "offen"}</span>
+          </Card.Header>
+          {!feePaid ? (
+            <Card.Footer>
+              <Button fullWidth isPending={pending} size="sm" variant="tertiary" onPress={() => run(() => markFeePaid(applicationId))}>
+                <Receipt />
+                Als bezahlt markieren
+              </Button>
+            </Card.Footer>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {preset && status === "genehmigt" ? <IssueDocument applicationId={applicationId} issuedCount={issuedCount} preset={preset} /> : null}
+
+      <MessageBox applicationId={applicationId} />
+    </div>
+  );
+}
+
+function MessageBox({ applicationId }: { applicationId: string }) {
+  const [tab, setTab] = useState<"buerger" | "intern">("buerger");
+  const [text, setText] = useState("");
+  const { pending, run } = useAction();
+
+  return (
+    <Card>
+      <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(k as "buerger" | "intern")}>
+        <Tabs.ListContainer>
+          <Tabs.List aria-label="Nachrichtenart">
+            <Tabs.Tab id="buerger">An Bürger<Tabs.Indicator /></Tabs.Tab>
+            <Tabs.Tab id="intern">Interne Notiz<Tabs.Indicator /></Tabs.Tab>
+          </Tabs.List>
+        </Tabs.ListContainer>
+      </Tabs>
+      <TextField aria-label="Nachricht" value={text} onChange={setText}>
+        <TextArea placeholder={tab === "intern" ? "Nur für die Verwaltung sichtbar" : "Wird dem Bürger angezeigt und per Discord gesendet"} rows={3} />
+      </TextField>
+      <Button
+        className="self-end"
+        isDisabled={text.trim().length < 2}
+        isPending={pending}
+        size="sm"
+        variant={tab === "intern" ? "tertiary" : "primary"}
+        onPress={() => run(() => addMessage(applicationId, text, tab === "intern"), () => setText(""))}
+      >
+        <PaperPlane />
+        {tab === "intern" ? "Notiz speichern" : "Senden"}
+      </Button>
+    </Card>
+  );
+}
+
+function IssueDocument({ applicationId, preset, issuedCount }: { applicationId: string; preset: NonNullable<Preset>; issuedCount: number }) {
+  const [title, setTitle] = useState(preset.title);
+  const [rows, setRows] = useState(Object.entries(preset.details));
+  const { pending, run } = useAction();
+
+  return (
+    <Card>
+      <Card.Header className="flex-row items-center gap-2">
+        <FileText className="size-4 text-accent" />
+        <Card.Title className="text-base">{issuedCount ? "Weiteres Dokument ausstellen" : "Dokument ausstellen"}</Card.Title>
+      </Card.Header>
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const valid = new FormData(e.currentTarget).get("validUntil");
+
+          run(() => issueDocument(applicationId, { title, validUntil: valid ? String(valid) : null, details: Object.fromEntries(rows) }));
+        }}
+      >
+        <TextField isRequired value={title} onChange={setTitle}>
+          <Label>Bezeichnung</Label>
+          <Input />
+        </TextField>
+        <DateInput defaultValue={preset.validUntil} label="Gültig bis (leer = unbefristet)" name="validUntil" />
+        <Separator />
+        <p className="text-xs font-medium text-muted">Angaben auf dem Dokument</p>
+        {rows.map(([k, v], i) => (
+          <div key={i} className="grid grid-cols-[5.5rem_minmax(0,1fr)_auto] items-center gap-2">
+            <TextField aria-label="Feld" className="min-w-0" value={k} onChange={(nk) => setRows(rows.map((r, j) => (j === i ? [nk, r[1]] : r)))}>
+              <Input placeholder="Feld" />
+            </TextField>
+            <TextField aria-label="Wert" className="min-w-0" value={v} onChange={(nv) => setRows(rows.map((r, j) => (j === i ? [r[0], nv] : r)))}>
+              <Input placeholder="Wert" />
+            </TextField>
+            <Button aria-label="Zeile entfernen" isIconOnly size="sm" variant="ghost" onPress={() => setRows(rows.filter((_, j) => j !== i))}>
+              <TrashBin />
+            </Button>
+          </div>
+        ))}
+        <Button className="self-start" size="sm" variant="ghost" onPress={() => setRows([...rows, ["", ""]])}>
+          <Plus />
+          Angabe hinzufügen
+        </Button>
+        <Button isPending={pending} type="submit">
+          <FileText />
+          Ausstellen
+        </Button>
+      </form>
+    </Card>
+  );
+}
