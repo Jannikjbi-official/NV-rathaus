@@ -20,6 +20,7 @@ import { ServiceSearch, type SearchItem } from "./service-search";
 
 import { BrandMark } from "@/components/brand/seal";
 import { ButtonLink } from "@/components/ui/button-link";
+import { initials } from "@/lib/format";
 import { signOutAction } from "@/app/actions/auth";
 
 export type HeaderAccount = { name: string; avatarUrl: string | null; isStaff: boolean } | null;
@@ -32,15 +33,6 @@ const NAV = [
   { id: "/karriere", label: "Karriere" },
   { id: "/pruefen", label: "Dokument prüfen" },
 ];
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 export function SiteHeader({ account, services }: { account: HeaderAccount; services: SearchItem[] }) {
   const pathname = usePathname();

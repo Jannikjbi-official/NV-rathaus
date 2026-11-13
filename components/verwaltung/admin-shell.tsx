@@ -16,6 +16,7 @@ import { Avatar, Chip, Separator } from "@heroui/react";
 
 import { Seal } from "@/components/brand/seal";
 import { SideNav } from "@/components/ui/side-nav";
+import { initials } from "@/lib/format";
 
 export function AdminShell({
   children,
@@ -76,7 +77,7 @@ export function AdminShell({
           <div className="flex items-center gap-3">
             <Avatar size="sm">
               {avatarUrl ? <Avatar.Image alt="" src={avatarUrl} /> : null}
-              <Avatar.Fallback>{name.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+              <Avatar.Fallback>{initials(name)}</Avatar.Fallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{name}</p>

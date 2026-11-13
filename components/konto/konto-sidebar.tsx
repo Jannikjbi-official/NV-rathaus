@@ -5,6 +5,7 @@ import { Avatar, Card, Separator } from "@heroui/react";
 
 import { ButtonLink } from "@/components/ui/button-link";
 import { SideNav } from "@/components/ui/side-nav";
+import { initials } from "@/lib/format";
 
 export function KontoSidebar({
   name,
@@ -24,7 +25,7 @@ export function KontoSidebar({
       <div className="flex items-center gap-3">
         <Avatar>
           {avatarUrl ? <Avatar.Image alt="" src={avatarUrl} /> : null}
-          <Avatar.Fallback>{name.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+          <Avatar.Fallback>{initials(name)}</Avatar.Fallback>
         </Avatar>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{name}</p>
