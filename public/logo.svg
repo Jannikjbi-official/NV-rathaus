@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" color="#c41e1e">
+  <title>Siegel Rathaus Nordverkehr</title>
+  <defs>
+    <path id="r" d="M60,60 m-50,0 a50,50 0 1,1 100,0 a50,50 0 1,1 -100,0"/>
+    <mask id="w"><rect width="120" height="120" fill="#fff"/><g fill="#000"><circle cx="60" cy="40" r="2.6"/><path d="M40 66v-7a2 2 0 0 1 4 0v7z"/><path d="M47 66v-7a2 2 0 0 1 4 0v7z"/><path d="M69 66v-7a2 2 0 0 1 4 0v7z"/><path d="M76 66v-7a2 2 0 0 1 4 0v7z"/><path d="M57 73v-10a3 3 0 0 1 6 0v10z"/></g></mask>
+  </defs>
+  <circle cx="60" cy="60" r="57.5" stroke="currentColor" stroke-width="3"/>
+  <circle cx="60" cy="60" r="43" stroke="currentColor" stroke-width="1.2"/>
+  <text fill="currentColor" font-family="Inter, Arial, Helvetica, sans-serif" font-size="8.4" font-weight="600"><textPath href="#r" textLength="312" lengthAdjust="spacing">NORDVERKEHR · RATHAUS · HAMBURG · ANNO 2026 ·</textPath></text>
+  <g fill="currentColor" mask="url(#w)"><polygon points="33,52 60,42 87,52"/><rect x="36" y="52" width="48" height="21"/><rect x="54.5" y="33" width="11" height="40"/><polygon points="54.5,33 60,18 65.5,33"/><circle cx="60" cy="16.6" r="1.6"/><rect x="31" y="73" width="58" height="3.2" rx="1"/></g>
+  <path d="M33 82c4.5-3 9-3 13.5 0s9 3 13.5 0 9-3 13.5 0 9 3 13.5 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M39 88.5c3.5-2.4 7-2.4 10.5 0s7 2.4 10.5 0 7-2.4 10.5 0 7 2.4 10.5 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+</svg>
