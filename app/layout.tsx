@@ -9,7 +9,7 @@ import { fontSans } from "@/config/fonts";
 export const metadata: Metadata = {
   title: { default: siteConfig.name, template: `%s · ${siteConfig.name}` },
   description: siteConfig.description,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://rathaus.nordverkehr.xyz"),
 };
 
 export const viewport: Viewport = {

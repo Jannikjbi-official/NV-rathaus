@@ -12,7 +12,7 @@ export async function nextReference() {
   return `AZ ${new Date().getFullYear()}-${String(n).padStart(6, "0")}`;
 }
 
-export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL ?? "https://rathaus.nordverkehr.xyz").replace(/\/$/, "");
 
 /** Pfad-Segment für ein Aktenzeichen ("AZ 2026-004812" → "2026-004812"). */
 export const referenceSlug = (reference: string) => reference.replace(/^AZ\s*/, "");

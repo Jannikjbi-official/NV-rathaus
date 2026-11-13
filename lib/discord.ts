@@ -12,7 +12,11 @@ export type GuildMember = {
 export const discordConfig = {
   guildId: process.env.DISCORD_GUILD_ID ?? "",
   citizenRoleId: process.env.DISCORD_CITIZEN_ROLE_ID ?? "",
-  adminRoleId: process.env.DISCORD_ADMIN_ROLE_ID ?? "",
+  /** Eine oder mehrere Rollen mit Vollzugriff, kommagetrennt (z. B. Owner, Admin). */
+  adminRoleIds: (process.env.DISCORD_ADMIN_ROLE_ID ?? "")
+    .split(",")
+    .map((r) => r.trim())
+    .filter(Boolean),
   botToken: process.env.DISCORD_BOT_TOKEN ?? "",
   inviteUrl: process.env.NEXT_PUBLIC_DISCORD_INVITE ?? "https://discord.gg/KrfKASTHDp",
 };

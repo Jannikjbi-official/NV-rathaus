@@ -24,7 +24,7 @@ async function staffRoleIds() {
 }
 
 function accessFromRoles(roles: string[], staffRoles: string[]) {
-  const isAdmin = !!discordConfig.adminRoleId && roles.includes(discordConfig.adminRoleId);
+  const isAdmin = discordConfig.adminRoleIds.some((r) => roles.includes(r));
   const isCitizen = !!discordConfig.citizenRoleId && roles.includes(discordConfig.citizenRoleId);
   const isStaff = roles.some((r) => staffRoles.includes(r));
 

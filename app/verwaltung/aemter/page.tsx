@@ -12,7 +12,7 @@ export default async function DepartmentsAdminPage() {
   const missing = [
     !discordConfig.guildId && "DISCORD_GUILD_ID",
     !discordConfig.citizenRoleId && "DISCORD_CITIZEN_ROLE_ID",
-    !discordConfig.adminRoleId && "DISCORD_ADMIN_ROLE_ID",
+    !discordConfig.adminRoleIds.length && "DISCORD_ADMIN_ROLE_ID",
     !discordConfig.botToken && "DISCORD_BOT_TOKEN",
   ].filter(Boolean);
 
