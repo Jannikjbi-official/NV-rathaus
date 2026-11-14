@@ -13,6 +13,7 @@ export const metadata: Metadata = { title: "Anmelden" };
 const ERRORS: Record<string, string> = {
   AccessDenied: "Die Anmeldung wurde abgelehnt. Prüfen Sie, ob Sie auf dem Nordverkehr-Discord sind und die Rolle „Bürger“ haben.",
   OAuthCallbackError: "Die Anmeldung bei Discord wurde abgebrochen. Bitte versuchen Sie es erneut.",
+  FiveM: "Die Anmeldung über das Tablet ist abgelaufen oder ungültig. Schließen Sie das Tablet und öffnen Sie es erneut.",
   Configuration: "Die Anmeldung ist gerade nicht verfügbar. Bitte melden Sie sich im Discord beim Team.",
 };
 

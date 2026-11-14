@@ -6,6 +6,7 @@ import { eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
 import { departments, users } from "@/db/schema";
 import { avatarUrl, discordConfig, fetchMember, fetchOwnMember } from "@/lib/discord";
+import { fivemLoginEnabled, verifyFivemToken } from "@/lib/fivem-token";
 
 /** Rollen werden höchstens alle 10 Minuten per Bot neu abgeglichen. */
 const ROLE_SYNC_MS = 10 * 60 * 1000;
@@ -50,6 +51,48 @@ async function upsertUser(values: typeof users.$inferInsert) {
     });
 }
 
+/**
+ * Das Tablet im Spiel bettet die Seite in einem iframe ein (Herkunft cfx-nui-…).
+ * Dort sendet der Browser nur Cookies mit SameSite=None mit. In Produktion
+ * läuft alles über HTTPS, Secure ist also ohnehin gesetzt.
+ */
+const embeddableCookies =
+  process.env.NODE_ENV === "production"
+    ? {
+        sessionToken: { options: { sameSite: "none" as const, secure: true } },
+        callbackUrl: { options: { sameSite: "none" as const, secure: true } },
+        csrfToken: { options: { sameSite: "none" as const, secure: true } },
+      }
+    : undefined;
+
+/** Gleiche Zugangsregeln wie beim Discord-Login, nur über den Bot geprüft. */
+async function signInFromGame(id: string) {
+  const member = await fetchMember(id);
+
+  if (member === undefined) return "/kein-zugang?grund=fehler";
+  if (member === null) return "/kein-zugang?grund=server";
+
+  const access = accessFromRoles(member.roles, await staffRoleIds());
+
+  if (!access.hasAccess) return "/kein-zugang?grund=rolle";
+
+  const [existing] = await db.select({ avatarUrl: users.avatarUrl }).from(users).where(eq(users.id, id)).limit(1);
+
+  await upsertUser({
+    id,
+    username: member.user?.username ?? "",
+    displayName: member.nick ?? member.user?.global_name ?? null,
+    avatarUrl: avatarUrl(id, member.user?.avatar) ?? existing?.avatarUrl ?? null,
+    discordRoles: member.roles,
+    isCitizen: access.isCitizen,
+    isAdmin: access.isAdmin,
+    rolesSyncedAt: new Date(),
+    lastLoginAt: new Date(),
+  });
+
+  return true;
+}
+
 const DEV_PERSONAS = {
   buerger: { username: "test.buerger", displayName: "Test-Bürger", isCitizen: true, isAdmin: false },
   admin: { username: "test.admin", displayName: "Test-Verwaltung", isCitizen: true, isAdmin: true },
@@ -58,6 +101,7 @@ const DEV_PERSONAS = {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 14 },
   pages: { signIn: "/anmelden", error: "/anmelden" },
+  cookies: embeddableCookies,
   providers: [
     Discord({
       // Discord sendet beim Rücksprung den Parameter "iss" (RFC 9207). Ohne festen
@@ -65,6 +109,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       issuer: "https://discord.com",
       authorization: { params: { scope: "identify guilds.members.read" } },
     }),
+    ...(fivemLoginEnabled
+      ? [
+          // Anmeldung aus dem Spiel: Der Spielserver bestätigt die Discord-ID
+          // mit einem signierten Kurzzeit-Token (siehe lib/fivem-token.ts).
+          Credentials({
+            id: "fivem",
+            name: "Tablet (FiveM)",
+            credentials: { token: {} },
+            authorize(credentials) {
+              const id = verifyFivemToken(credentials?.token);
+
+              if (!id) throw new CredentialsSignin();
+
+              return { id };
+            },
+          }),
+        ]
+      : []),
     ...(devLoginEnabled
       ? [
           Credentials({
@@ -94,8 +156,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       : []),
   ],
   callbacks: {
-    async signIn({ account, profile }) {
+    async signIn({ account, profile, user }) {
       if (account?.provider === "dev") return true;
+      if (account?.provider === "fivem") return signInFromGame(String(user.id));
       if (account?.provider !== "discord" || !account.access_token || !profile?.id) return false;
 
       const member = await fetchOwnMember(account.access_token).catch(() => undefined);
