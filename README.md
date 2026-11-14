@@ -74,7 +74,7 @@ Die Ressource `nv-tablet` auf dem Spielserver zeigt das Rathaus in einem Tablet 
   (`DISCORD_BOT_TOKEN` ist dafür Pflicht).
 - In Produktion haben die Auth-Cookies `SameSite=None; Secure`, damit sie im iframe des Tablets funktionieren.
 - Einbetten ist per `Content-Security-Policy: frame-ancestors` nur der eigenen Seite und
-  `https://cfx-nui-nv-tablet` erlaubt (`next.config.mjs`).
+  `https://cfx-nui-nv-tablet` (plus die FiveM-NUI-Root `nui://game`) erlaubt (`next.config.mjs`).
 
 ## Projektstruktur
 
