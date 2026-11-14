@@ -52,7 +52,7 @@ async function upsertUser(values: typeof users.$inferInsert) {
 }
 
 /**
- * Das Tablet im Spiel bettet die Seite in einem iframe ein (Herkunft cfx-nui-…).
+ * Das Tablet im Spiel bettet die Seite in einem iframe ein (Herkunft cfx-nui-nv-tablet).
  * Dort sendet der Browser nur Cookies mit SameSite=None mit. In Produktion
  * läuft alles über HTTPS, Secure ist also ohnehin gesetzt.
  */

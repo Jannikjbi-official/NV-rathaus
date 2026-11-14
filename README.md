@@ -66,7 +66,7 @@ Für lokale Tests ohne Discord: `AUTH_DEV_LOGIN=true` in `.env` zeigt auf `/anme
 
 ### 4. Tablet im Spiel (FiveM)
 
-Die Ressource `nv_tablet` auf dem Spielserver zeigt das Rathaus in einem Tablet an.
+Die Ressource `nv-tablet` auf dem Spielserver zeigt das Rathaus in einem Tablet an.
 
 - Der Spielserver signiert die Discord-ID des Spielers mit `FIVEM_LOGIN_SECRET` (HMAC-SHA256,
   höchstens 120 Sekunden gültig, einmalig) und öffnet `/api/fivem/anmelden?token=…&weiter=/konto`.
@@ -74,7 +74,7 @@ Die Ressource `nv_tablet` auf dem Spielserver zeigt das Rathaus in einem Tablet 
   (`DISCORD_BOT_TOKEN` ist dafür Pflicht).
 - In Produktion haben die Auth-Cookies `SameSite=None; Secure`, damit sie im iframe des Tablets funktionieren.
 - Einbetten ist per `Content-Security-Policy: frame-ancestors` nur der eigenen Seite und
-  `https://cfx-nui-nv_tablet` erlaubt (`next.config.mjs`).
+  `https://cfx-nui-nv-tablet` (plus die FiveM-NUI-Root `nui://game`) erlaubt (`next.config.mjs`).
 
 ## Projektstruktur
 
